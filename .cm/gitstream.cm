@@ -16,21 +16,6 @@ automations:
           label: "{{ calc.etr }} min review"
           color: {{ colors.red if (calc.etr >= 20) else (colors.yellow if (calc.etr >= 5) else colors.green) }}
 
-  # Notify PR authors about missing Jira ticket reference
-  label_missing_jira_info:
-    if:
-      - {{ not (has.jira_ticket_in_title or has.jira_ticket_in_desc) }}
-    run:
-      - action: add-label@v1
-        args:
-          label: "missing-jira"
-          color: {{ colors.red }}
-      - action: add-comment@v1
-        args:
-          comment: |
-            This PR is missing a Jira ticket reference in the title or description.
-            Please add a Jira ticket reference to the title or description of this PR.
-
   # Comment with code expert suggestions for the PR
   explain_code_experts:
     if:
@@ -39,30 +24,7 @@ automations:
       - action: explain-code-experts@v1 
         args:
           gt: 0
-
-  # Assign code experts as reviewers based on expertise
-  assign_code_experts:
-    if:
-      - {{ true }}
-    run:
-      - action: add-reviewers@v1
-        args:
-          reviewers: {{ repo | codeExperts(gt=0) }}
-      - action: explain-code-experts@v1
-        args:
-          gt: 0
-  # Debugging Code Experts Output
-  debug_code_experts_output:
-    if:
-      - true  # Runs on every PR to check for code experts
-    run:
-      - action: add-comment@v1
-        args:
-          comment: |
-            **Code Experts Identified:** `{{ repo | codeExperts(gt=0) }}`
-
-
-  
+   
 # +----------------------------------------------------------------------------+
 # | Custom Expressions                                                         |
 # +----------------------------------------------------------------------------+
