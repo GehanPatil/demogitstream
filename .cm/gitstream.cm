@@ -35,7 +35,7 @@ automations:
     if:
       - true
     run:
-      - action: explain-code-experts@v1 
+      - action: explain-code-experts@v2 
         args:
           gt: 0
 
