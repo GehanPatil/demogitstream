@@ -73,6 +73,16 @@ jobs:
               reviewers
             });
 
+      - name: Trigger Contributors Report
+        uses: actions/github-script@v6
+        with:
+          script: |
+              github.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'contributors-report.yml',
+                ref: 'main'
+              });
       - name: Require Senior Reviewers for UI Changes
         if: ${{ success() && contains(steps.rules-engine.outputs.modifiedFiles, '/') }}
         uses: linear-b/gitstream-github-action@v2
