@@ -1,0 +1,28 @@
+name: Contributors Report
+
+on:
+  workflow_dispatch: # Triggered manually for testing purposes
+  push:              # Or you can use any event GitStream supports to trigger it, such as on pull request merges
+    branches:
+      - main         # Trigger on pushes to the main branch
+
+jobs:
+  contributors-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Get contributors list with percentage
+        run: |
+          # Get the total number of commits
+          total_commits=$(git rev-list --count HEAD)
+
+          # List contributors with their commit count and calculate percentage
+          echo "Contributors and their percentage of total commits:"
+          echo "============================================="
+          git shortlog -s -n --all | while read count name; do
+            percentage=$(awk "BEGIN {printf \"%.2f\", ($count/$total_commits)*100}")
+            echo "$name: $count commits ($percentage%)"
+          done
