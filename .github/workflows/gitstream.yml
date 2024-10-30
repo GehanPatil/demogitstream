@@ -57,7 +57,9 @@ jobs:
         id: assign-experts
         with:
           action: add-reviewers@v1
-          reviewers: ${{ steps.rules-engine.outputs.codeExperts || 'amrita-scholl,gehanpatil' }}  # F
+          reviewers: ${{ steps.rules-engine.outputs.codeExperts && steps.rules-engine.outputs.codeExperts || 'amrita-scholl,gehanpatil' }}
+        env:
+          ACTIONS_STEP_DEBUG: true  # Enables debugging for the step
 
       - name: Require Senior Reviewers for UI Changes
         if: ${{ success() && contains(steps.rules-engine.outputs.modifiedFiles, '/') }}
