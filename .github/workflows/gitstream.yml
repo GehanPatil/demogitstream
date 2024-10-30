@@ -61,6 +61,18 @@ jobs:
         env:
           ACTIONS_STEP_DEBUG: true  # Enables debugging for the step
 
+      - name: Assign Reviewers (Fallback Method)
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const reviewers = ["amrita-scholl", "gehanpatil"];
+            await github.pulls.requestReviewers({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              reviewers
+            });
+
       - name: Require Senior Reviewers for UI Changes
         if: ${{ success() && contains(steps.rules-engine.outputs.modifiedFiles, '/') }}
         uses: linear-b/gitstream-github-action@v2
