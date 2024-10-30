@@ -24,6 +24,18 @@ automations:
       - action: explain-code-experts@v1 
         args:
           gt: 0
+
+# Assign code experts as reviewers based on expertise
+  assign_code_experts:
+    if:
+      - {{ true }}
+    run:
+      - action: add-reviewers@v1
+        args:
+          reviewers: {{ repo | codeExperts(gt=0) }}
+      - action: explain-code-experts@v1
+        args:
+          gt: 0
    
 # +----------------------------------------------------------------------------+
 # | Custom Expressions                                                         |
