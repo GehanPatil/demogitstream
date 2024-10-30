@@ -57,7 +57,8 @@ jobs:
         id: assign-experts
         with:
           action: add-reviewers@v1
-          reviewers: ${{ steps.rules-engine.outputs.codeExperts || 'amrita-scholl,gehanpatil' }}  # Fallback to default reviewers
+          reviewers: ${{ steps.rules-engine.outputs.codeExperts || 'amrita-scholl,gehanpatil' }}  # F
+
       - name: Require Senior Reviewers for UI Changes
         if: ${{ success() && contains(steps.rules-engine.outputs.modifiedFiles, '/') }}
         uses: linear-b/gitstream-github-action@v2
