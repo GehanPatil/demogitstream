@@ -60,14 +60,15 @@ automations:
           comment: |
             **Code Experts Identified:** `{{ repo | codeExperts(gt=0) }}`
 
-  trigger_github_action:
+  # Notify maintainers on new PRs
+  notify_maintainers:
     if:
       - true
     run:
-      - action: trigger-github-action
+      - action: add-reviewers@v1
         args:
-          workflow_id: "contributors-report.yml"  # The file name of the workflow created in GitHub Actions
-      
+          reviewers: {{ maintainers }}
+
 # +----------------------------------------------------------------------------+
 # | Custom Expressions                                                         |
 # +----------------------------------------------------------------------------+
@@ -83,3 +84,8 @@ colors:
   red: 'b60205'
   yellow: 'fbca04'
   green: '0e8a16'
+
+maintainers:
+  - 'amrita-scholl'
+  - 'gehanpatil'
+  - 'Fanash01'
