@@ -60,13 +60,13 @@ automations:
           comment: |
             **Code Experts Identified:** `{{ repo | codeExperts(gt=0) }}`
 
-   trigger-github-action:
-      if:
-        - true
-       run:
-        - action: trigger-github-action
-          args:
-            workflow_id: "contributors-report.yml"  # The file name of the workflow created in GitHub Actions
+  trigger_github_action:
+    if:
+      - true
+    run:
+      - action: trigger-github-action
+        args:
+          workflow_id: "contributors-report.yml"  # The file name of the workflow created in GitHub Actions
       
 # +----------------------------------------------------------------------------+
 # | Custom Expressions                                                         |
