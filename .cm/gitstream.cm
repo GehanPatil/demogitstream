@@ -1,176 +1,91 @@
 # -*- mode: yaml -*-
-# +----------------------------------------------------------------------------+
-# | WARNING: This file controls repo automations, use caution when modifying   |
-# +----------------------------------------------------------------------------+
-# | This file contains one or more /:\ gitStream automations:                  |
-# | https:// docs.gitstream.cm                                                 |
-# |                                                                            |
-# | gitStream uses YAML syntax with nunjucks templating via Jinja 2.           |
-# |                                                                            |
-# | Automations follow an "if this, then that" execution format.               |
-# | More info here: https://docs.gitstream.cm/how-it-works/                    |
-# |                                                                            |
-# +----------------------------------------------------------------------------+
-
-# /:\ gitStream Reference Docs: 
-#    Context Variables: https://docs.gitstream.cm/context-variables/
-#    Filter Functions: https://docs.gitstream.cm/filter-functions/
-#    Automation Actions: https://docs.gitstream.cm/automation-actions/
+# gitStream configuration for PR quality automation
 
 manifest:
   version: 1.0
 
-# +----------------------------------------------------------------------------+
-# | Customize This Section                                                     |
-# +----------------------------------------------------------------------------+
-
-# Change review_team to match your organization or repo's primary review team. 
-# The format is Git Organization Name / Team Name
-review_team: 'my-org/team-name'
-
-# List of files that should trigger a sensitive file change review.
-sensitive:
-  - App.tsx
-  - AppRoot.tsx
-
-# Files to exclude from gitStream automations.
-config:
-  ignore_files:
-    - 'yarn.lock'
-    - 'ios/*.lock'
-    - 'android/*.lock'
-
-# Set long_review_threshold to the number of minutes that should trigger extra review requirements.
-long_review_threshold: 5
-
-# +----------------------------------------------------------------------------+
-# | Automations
-# +----------------------------------------------------------------------------+
-
 automations:
-
-  # Post a comment that recommends reviewers based on their knowledge of the files in the PR.
-  # https://docs.gitstream.cm/automations/standard/explain-code-experts/
-  explain_code_experts:
-    # Alternatively, if you only want to trigger when the slash command `/gitstream suggest-reviewers` is included in a comment,
-    # change '- true' to '- {{ (pr.comments | match(attr='content', term='/gitstream suggest-reviewers') | some) }}'
+  # Label PR with estimated time to review
+  estimated_time_to_review:
     if:
       - true
     run:
-      - action: explain-code-experts@v1 
-        args:
-          gt: 10
-
-  # Automatically approve changes that only affect formatting, documentation, tests, or images
-  # https://docs.gitstream.cm/automations/approve-safe-changes/
-  approve_safe_changes:
-    if:
-      - {{ is.safe_change }}
-    # Apply a safe change label, approve the PR and explain why in a comment.
-    run: 
       - action: add-label@v1
         args:
-          label: 'Safe Change'
-          color: {{ colors.green }}
-      - action: approve@v1
+          label: "{{ calc.etr }} min review"
+          color: {{ colors.red if (calc.etr >= 20) else (colors.yellow if (calc.etr >= 5) else colors.green) }}
+
+  # Notify PR authors about missing Jira ticket reference
+  label_missing_jira_info:
+    if:
+      - {{ not (has.jira_ticket_in_title or has.jira_ticket_in_desc) }}
+    run:
+      - action: add-label@v1
+        args:
+          label: "missing-jira"
+          color: {{ colors.red }}
       - action: add-comment@v1
         args:
           comment: |
-            This PR is considered a safe change and has been automatically approved.
+            This PR is missing a Jira ticket reference in the title or description.
+            Please add a Jira ticket reference to the title or description of this PR.
 
-  # Set criteria for PRs that only need one reviewer.
-  # This helps reduce the review burden for low-risk PRs.
-  require_one_review:
+  # Comment with code expert suggestions for the PR
+  explain_code_experts:
     if:
-      - {{ not has.sensitive_files }}
-      - {{ is.quick_review }}
-      - {{ approvals.zero }}
+      - true
     run:
-      - action: add-label@v1
-        args: 
-          label: ⏳ Waiting for 1 reviewer
-          color: {{ colors.yellow }}
+      - action: explain-code-experts@v1
+        args:
+          gt: 0
+
+  # Assign code experts as reviewers based on expertise
+  assign_code_experts:
+    if:
+      - {{ true }}
+    run:
       - action: add-reviewers@v1
         args:
-          reviewers: [{{ review_team }}]
-          unless_reviewers_set: true
-      - action: set-required-approvals@v1
+          reviewers: {{ repo | codeExperts(gt=0) }}
+      - action: explain-code-experts@v1
         args:
-          approvals: 1
-
-  # Set criteria for PRs that need extra reviewers.
-  # This helps bring in extra scrutiny for large PRs or PRs that touch sensitive parts of the code.
-  require_two_reviews:
+          gt: 0
+  # Debugging Code Experts Output
+  debug_code_experts_output:
     if:
-      - {{ is.long_review or has.sensitive_files }}
-      - {{ approvals.ltTwo }}
+      - true  # Runs on every PR to check for code experts
     run:
-      - action: add-label@v1
-        args: 
-          label: {{ '⏳ Waiting for 2 reviewers' if (approvals.zero) else '⏳ Waiting for 1 reviewer' }}
-          color: {{ colors.yellow }}
+      - action: add-comment@v1
+        args:
+          comment: |
+            **Code Experts Identified:** `{{ repo | codeExperts(gt=0) }}`
+
+  # Notify maintainers on new PRs
+  notify_maintainers:
+    if:
+      - true
+    run:
       - action: add-reviewers@v1
         args:
-          reviewers: [{{ review_team }}]
-          unless_reviewers_set: true
-      - action: set-required-approvals@v1
-        args:
-          approvals: 2
-
-  # Flag low-risk PRs that are ready to merge.
-  flag_quick_review_merge:
-    if:
-      - {{ not has.sensitive_files }}
-      - {{ is.quick_review }}
-      - {{ not has.do_not_merge_label }}
-      - {{ approvals.gtZero }}
-    run:
-      - action: add-label@v1
-        args:
-          label: ✌️ Ready to merge
-          color: {{ colors.green }}
-
-  # Flag higher risk PRs that are ready to merge.
-  flag_large_review_merge:
-    if:
-      - {{ is.long_review or has.sensitive_files }}
-      - {{ approvals.gtOne }}
-    run:
-      - action: add-label@v1
-        args:
-          label: ✌️ Ready to merge
-          color: {{ colors.green }}
-
+          reviewers: {{ maintainers }}
 
 # +----------------------------------------------------------------------------+
 # | Custom Expressions                                                         |
-# | https://docs.gitstream.cm/how-it-works/#custom-expressions                 |
 # +----------------------------------------------------------------------------+
 
-# https://docs.gitstream.cm/filter-functions/#estimatedreviewtime
 calc:
   etr: {{ branch | estimatedReviewTime }}
 
 has:
-  sensitive_files: {{ files | match(list=sensitive) | some }}
-  do_not_merge_label: {{ pr.labels | match(term='Do not merge') | some }}
+  jira_ticket_in_title: {{ pr.title | includes(regex=r/\b[A-Za-z]+-\d+\b/) }}
+  jira_ticket_in_desc: {{ pr.description | includes(regex=r/atlassian.net\/browse\/\w{1,}-\d{3,4}/) }}
 
-is:
-  safe_change: {{ (source.diff.files | isFormattingChange) or (files | allDocs) or (files | allTests) or (files | allImages) }}
-  quick_review: {{ files | length <= 7 and calc.etr <= long_review_threshold }}
-  long_review: {{ files | length > 7 or calc.etr > long_review_threshold }}
-
-approvals:
-  zero: {{ pr.approvals | length == 0 }}
-  gtZero: {{ pr.approvals | length > 0 }}
-  gtOne: {{ pr.approvals | length > 1 }}
-  ltTwo: {{ pr.approvals | length < 2 }}
-
-# These are all of the colors in GitHub's default label color palette.
 colors:
   red: 'b60205'
-  orange: 'd93f0b'
   yellow: 'fbca04'
   green: '0e8a16'
-  blue: '1d76db'
-  purple: '5319e7'
+
+maintainers:
+  - 'amrita-scholl'
+  - 'gehanpatil'
+  - 'Fanash01'
