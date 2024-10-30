@@ -1,12 +1,11 @@
 # -*- mode: yaml -*-
-# This example configuration provides basic automations to get started with gitStream.
-# View the gitStream quickstart for more examples: https://docs.gitstream.cm/examples/
+# gitStream configuration for PR quality automation
+
 manifest:
   version: 1.0
 
-
 automations:
-  # Add a label that indicates how many minutes it will take to review the PR.
+  # Label PR with estimated time to review
   estimated_time_to_review:
     if:
       - true
@@ -14,8 +13,9 @@ automations:
       - action: add-label@v1
         args:
           label: "{{ calc.etr }} min review"
-          color: {{ colors.red if (calc.etr >= 20) else ( colors.yellow if (calc.etr >= 5) else colors.green ) }}
-  # Inform PR authors when they fail to reference Jira tickets in the PR title or description.
+          color: {{ colors.red if (calc.etr >= 20) else (colors.yellow if (calc.etr >= 5) else colors.green) }}
+
+  # Notify PR authors about missing Jira ticket reference
   label_missing_jira_info:
     if:
       - {{ not (has.jira_ticket_in_title or has.jira_ticket_in_desc) }}
@@ -29,19 +29,70 @@ automations:
           comment: |
             This PR is missing a Jira ticket reference in the title or description.
             Please add a Jira ticket reference to the title or description of this PR.
-  # Post a comment that lists the best experts for the files that were modified.
+
+  # Comment with code expert suggestions for the PR
   explain_code_experts:
     if:
       - true
     run:
       - action: explain-code-experts@v1 
         args:
-          gt: 10 
+          gt: 0
 
+  # Assign code experts as reviewers based on expertise
+  assign_code_experts:
+    if:
+      - {{ true }}
+    run:
+      - action: add-reviewers@v1
+        args:
+          reviewers: {{ repo | codeExperts(gt=0) }}
+      - action: explain-code-experts@v1
+        args:
+          gt: 0
+  # Debugging Code Experts Output
+  debug_code_experts_output:
+    if:
+      - true  # Runs on every PR to check for code experts
+    run:
+      - action: add-comment@v1
+        args:
+          comment: |
+            **Code Experts Identified:** `{{ repo | codeExperts(gt=0) }}`
+
+  # Example GitStream configuration to assign reviewers based on directories
+  assign_reviews_by_directory:
+    # Define different conditions for different directories
+    if:
+      - {{ files | match(regex=r/^src\/main/) | some }}  # Checks if files in `src/backend` were modified
+    run:
+      - action: require-reviewers@v1
+        args:
+          reviewers:
+            - amrita-scholl
+            - amrita-singh06
+  assign_testcase_reviewers:
+    if:
+      - {{ files | match(regex=r/^src\/test/) | some }}  # Checks if files in `src/frontend` were modified
+    run:
+      - action: require-reviewers@v1
+        args:
+          reviewers:
+            - gehanpatil
+            - amrita-scholl
+
+  assign_docs_reviewers:
+    if:
+      - {{ files | match(regex=r/^docs/) | some }}  # Checks if files in `docs` were modified
+    run:
+      - action: require-reviewers@v1
+        args:
+          reviewers:
+            - gehanpatil
+            - amrita-scholl
 
 # +----------------------------------------------------------------------------+
 # | Custom Expressions                                                         |
-# | https://docs.gitstream.cm/how-it-works/#custom-expressions                 |
 # +----------------------------------------------------------------------------+
 
 calc:
